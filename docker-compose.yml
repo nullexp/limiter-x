@@ -14,7 +14,8 @@ services:
       - ${APP_NETWORK_NAME}
     volumes:
       - postgres-user-data:/var/lib/postgresql/data
-      - ./internal/adapter/driven/db/migration/init.sql:/docker-entrypoint-initdb.d/init.sql  # Mount init.sql into the container
+      - ./internal/adapter/driven/db/migration/000001_create_users_table.up.sql:/docker-entrypoint-initdb.d/000001_create_users_table.up.sql  # Mount init.sql into the container
+
 
   redis:
     image: redis
@@ -22,7 +23,7 @@ services:
     ports:
       - "${REDIS_PORT}:6379"
     networks:
-      - ${APP_NETWORK_NAME}
+      - APP_NETWORK
     restart: always
     environment:
       ALLOW_EMPTY_PASSWORD: yes
@@ -50,7 +51,7 @@ services:
       - redis
     restart: always
     networks:
-      - ${APP_NETWORK_NAME}
+      - APP_NETWORK
 
 networks:
   APP_NETWORK:
