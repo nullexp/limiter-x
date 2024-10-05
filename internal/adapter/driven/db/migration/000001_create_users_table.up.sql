@@ -1,11 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE users (
+CREATE TABLE user_rate_limits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username TEXT UNIQUE NOT NULL,
-    password TEXT  NOT NULL,
-    role_id UUID NOT NULL,
-    is_admin boolean NOT NULL DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    user_id UUID NOT NULL,
+    request_count INT NOT NULL DEFAULT 0,
+    rate_limit INT NOT NULL DEFAULT 100,  -- Default rate limit for users
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

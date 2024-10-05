@@ -1,2 +1,2 @@
 -- init.sql
-CREATE DATABASE "app-user";
+CREATE DATABASE "rates";
