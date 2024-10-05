@@ -1,78 +1,168 @@
-# High-Performance Distributed Rate Limiter
+## Design and Architecture Overview
 
-## Project Overview
+This project follows the **Hexagonal Architecture (Ports and Adapters)** design pattern, which separates the business logic from external concerns like databases, message queues, APIs, etc. This architecture provides clear boundaries between the core domain logic and the infrastructure, promoting a modular and flexible design. 
 
-This project implements a **High-Performance Distributed Rate Limiter** for an API gateway. The solution addresses the need to **limit the number of requests per second** per user in a **distributed environment**. The rate limiter ensures global rate limits are respected across multiple service instances, preventing individual nodes from over-serving users and ensuring fairness in handling traffic.
+The project uses **Redis** and **PostgreSQL** for data persistence, and **gRPC** for service-to-service communication. The core focus is on providing a scalable and distributed rate-limiting service with high efficiency and precision.
 
-### Key Features
-- **Concurrency**: Capable of handling multiple requests from different users concurrently using Go's concurrency primitives.
-- **Distributed**: The rate limiter works across multiple instances of the service, ensuring global rate limits.
-- **Efficiency**: Memory-efficient with minimized locking overhead to handle high traffic.
-- **Customizable**: Each user can have a unique, dynamic rate limit.
-- **Precision**: Implements the **sliding window algorithm** to maintain precision and fairness.
-- **Persistence**: Redis is used as a globally distributed state to ensure rate limits are respected even after failures.
+### Hexagonal Architecture (Ports and Adapters)
 
-### Problem Statement
+The **Hexagonal Architecture**, also known as **Ports and Adapters Architecture**, emphasizes separation between the core business logic (domain) and the outer layers (infrastructure) to achieve flexibility, maintainability, and testability.
 
-The goal is to build a rate-limiting service that satisfies the following requirements:
-- **Concurrency**: Multiple requests from various users handled concurrently.
-- **Distributed**: Rate limits must be respected globally across multiple instances of the service.
-- **Efficiency**: Efficient memory and CPU utilization.
-- **Customizable**: Support dynamic rate limits per user.
-- **Precision**: Implement a sliding window algorithm.
-- **Persistence**: Recover from failures while maintaining accurate request counts via Redis.
+- **Ports**: Interfaces that define how the outside world interacts with the core application logic. Ports define the use cases of the application.
+- **Adapters**: Implementations of the ports, providing the actual mechanisms for interacting with databases, external APIs, and other systems.
+- **Core Domain**: Contains the business rules and logic, independent of any infrastructure or external frameworks.
 
-## Architecture
+This project is structured as follows:
 
-The application is split into different components to maintain separation of concerns:
+### Layers:
 
-1. **gRPC Service Layer**: This handles incoming gRPC requests and invokes the rate-limiting logic.
-2. **Rate Limiting Logic**: Implements the core rate-limiting logic using the sliding window algorithm.
-3. **Redis Integration**: Redis is used to maintain global consistency across service instances.
-4. **Postgres Integration**: Rate limit configurations and user data are persisted in Postgres for long-term storage and recovery.
-5. **Testing**: Unit tests and benchmarks are provided to ensure that the solution performs well under load and respects rate limits globally.
+1. **Domain (Core)**: The core logic of the application. This layer contains the **business rules** and **use cases**. It does not depend on any external frameworks, databases, or APIs.
+   
+   - **Domain Models**: Located in `internal/domain/model/`, where key entities like `UserRateLimit` are defined. These models represent the core business concepts.
+   - **Domain Errors**: Located in `internal/domain/error/`, where business-related errors are managed.
+   
+2. **Ports**: These are interfaces that define how the core application interacts with the outside world. For example, how the rate limiter logic interacts with the database or cache.
 
-## gRPC Services
+   - **Driver Ports**: Define how external services interact with the core application logic (e.g., gRPC or HTTP services). 
+     - Located in `internal/port/driver/service/`.
+   - **Driven Ports**: Define the interfaces that the application uses to interact with external systems, such as the database or cache. 
+     - Located in `internal/port/driven/db/` for database interactions and `internal/port/driven/cache.go` for cache interactions.
 
-The project uses **gRPC** to expose rate-limiting functionality across distributed services.
+3. **Adapters (Infrastructure)**: These implement the interfaces defined in the Ports layer. They include:
 
-### gRPC Files
-The `api/proto/rate/v1/rate_service.proto` defines the following service and message types:
+   - **Driven Adapters**: These adapters implement interactions with external systems such as Redis and PostgreSQL.
+     - **Database Adapters**: Located in `internal/adapter/driven/db/`, where actual database-related code is present (e.g., `PostgresTransaction`, `Repository`, etc.).
+     - **Cache Adapters**: Located in `internal/adapter/driven/cache/`, where Redis-related interactions are implemented.
+   
+   - **Driver Adapters**: These adapters expose the application logic via different interfaces such as gRPC or HTTP.
+     - **gRPC Services**: Located in `internal/adapter/driver/grpc/`, responsible for handling gRPC requests and mapping them to core domain logic.
 
-#### Service: `RateLimiterService`
-- **`CheckRateLimit`**: This API checks if a request from a given user should be allowed based on the rate limit.
-  - **Request**: `CheckRateLimitRequest`
-    - Contains the user ID and rate limit to verify if the user is allowed to make the request.
-  - **Response**: `CheckRateLimitResponse`
-    - Returns a boolean indicating whether the request is allowed or denied based on the rate limit.
+### Redis and PostgreSQL Integration
+
+- **PostgreSQL**: Acts as the **primary data store** where configuration and user-specific rate limits are stored persistently. This ensures that rate limits and user data can be persisted across system restarts and other failure conditions.
   
-- **`GetUserRateLimit`**: This API retrieves the current rate limit for a specific user.
-  - **Request**: `GetUserRateLimitRequest`
-    - Contains the user ID.
-  - **Response**: `GetUserRateLimitResponse`
-    - Returns the current rate limit for the user.
+  - PostgreSQL schemas and migrations are located in `internal/adapter/driven/db/migration/`.
+  - Rate limiting logic interacts with PostgreSQL via the **repository** pattern defined in `internal/adapter/driven/db/repository/rate.go`.
+  
+- **Redis**: Provides a **distributed in-memory store** to ensure global rate limits are enforced across all instances of the rate-limiting service. Redis is used to handle **global state** in a distributed environment, so that requests across different instances share the same rate-limiting information.
+  
+  - Redis interactions are handled in the `internal/adapter/driven/cache/` directory with a `redis.go` implementation. The global state of each user's request counts and timestamp is maintained here to ensure consistency across all instances.
 
-- **`UpdateUserRateLimit`**: This API updates the rate limit for a specific user, allowing admins to dynamically adjust the rate limits.
-  - **Request**: `UpdateUserRateLimitRequest`
-    - Contains the user ID and the new rate limit to be applied.
-  - **Response**: `UpdateUserRateLimitResponse`
-    - Confirms the update of the user's rate limit.
+### How the Rate Limiter Works
+1. **RateLimit Check**: 
+   - When a user makes a request, the **RateLimiterService** checks if the request should be allowed by evaluating the user's request count in the current time window. This logic is encapsulated in the service defined in `internal/adapter/driver/service/limiter.go`.
+   - The sliding window algorithm is used to count requests within a time window, allowing for fairness and precision.
 
-These gRPC methods provide the core interface for interacting with the rate limiter from external systems, ensuring that rate limits are respected across distributed instances.
+2. **Persistence**:
+   - The PostgreSQL database stores each user's rate limit configuration and request count. This ensures that the state can be recovered if the system crashes or restarts.
+   - Redis is used to ensure that the rate limit is globally consistent across multiple instances. The Redis cache is queried first to check if the user has exceeded the rate limit.
 
-## Algorithms
+3. **Concurrency**:
+   - Go's concurrency primitives (goroutines, channels) ensure that multiple requests can be handled efficiently and concurrently.
+   - Redis ensures consistency of state across distributed instances of the service, so multiple instances can handle requests concurrently while respecting the global rate limit.
 
-### Sliding Window Algorithm
+### Detailed Design
 
-The **sliding window** algorithm ensures that rate limits are enforced precisely and fairly. The window "slides" over time, meaning that we account for recent requests and allow bursts, but not beyond the allowed rate. This ensures fairness, preventing a user from sending too many requests in a short period and gaming the system.
+The rate limiter uses a **sliding window algorithm** to ensure that requests are counted within a specific time window. Here's a high-level breakdown:
 
-The rate-limiting logic is handled in the `RateLimitService`:
-- Requests from the same user are counted.
-- If the number of requests exceeds the configured rate limit within the defined time window, the request is rejected.
-- The state of requests is stored in Redis to ensure persistence and global distribution across instances.
+- **Sliding Window**: The time window "slides" over time, and requests within the window are counted. Redis stores this state for each user, and the service checks if the user has exceeded their limit.
+- **Persistence**: PostgreSQL stores persistent data on the user’s rate limit configuration and request history to handle failure recovery.
 
-### Redis for Distributed Rate Limiting
-Redis is utilized to store rate limit data for each user across distributed instances. This ensures that rate limits are respected globally even if multiple instances of the rate limiter are running.
+### gRPC APIs
+
+The `RateLimiterService` provides the following gRPC APIs to interact with the rate-limiting service:
+
+#### 1. `CheckRateLimit`
+This API checks whether a user’s request should be allowed or denied based on their current rate limit.
+
+**Request**:
+```proto
+message CheckRateLimitRequest {
+    string user_id = 1;
+    int32 limit = 2;
+}
+```
+
+- `user_id`: The ID of the user making the request.
+- `limit`: The rate limit to check. If this is `0`, the limit stored in the database is used.
+
+**Response**:
+```proto
+message CheckRateLimitResponse {
+    bool allowed = 1;
+}
+```
+
+- `allowed`: A boolean indicating whether the request was allowed.
+
+#### 2. `GetUserRateLimit`
+Retrieves the current rate limit configuration for a specific user.
+
+**Request**:
+```proto
+message GetUserRateLimitRequest {
+    string user_id = 1;
+}
+```
+
+**Response**:
+```proto
+message GetUserRateLimitResponse {
+    int32 rate_limit = 1;
+}
+```
+
+- `rate_limit`: The current rate limit for the user.
+
+#### 3. `UpdateUserRateLimit`
+Updates the rate limit for a specific user (useful for dynamic rate adjustments).
+
+**Request**:
+```proto
+message UpdateUserRateLimitRequest {
+    string user_id = 1;
+    int32 new_limit = 2;
+}
+```
+
+**Response**:
+```proto
+message UpdateUserRateLimitResponse {
+    bool success = 1;
+}
+```
+
+- `success`: Indicates whether the update was successful.
+
+## Database Design
+
+### PostgreSQL
+
+The PostgreSQL database is used to store persistent information about the user's rate limits and configurations. The migrations for PostgreSQL can be found in `internal/adapter/driven/db/migration`.
+
+The `user_rate_limits` table is designed as follows:
+
+```sql
+CREATE TABLE user_rate_limits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    request_count INT NOT NULL DEFAULT 0,
+    rate_limit INT NOT NULL DEFAULT 100,  -- Default rate limit for users
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+This table stores:
+- **user_id**: The unique identifier for the user.
+- **request_count**: Tracks how many requests the user has made in the current time window.
+- **rate_limit**: The user's rate limit (default is 100 requests per second).
+- **timestamp**: Timestamp for the last request, which is used for sliding window calculations.
+
+### Redis
+
+Redis is used to store temporary data about user requests for efficient, distributed rate limiting. Redis stores:
+- The user's request count within the sliding window.
+- The timestamp of the user's last request to enforce the sliding window.
 
 ## Setup Instructions
 
@@ -97,8 +187,6 @@ WINDOW_MILI_SEC=100
 PG_MIGRATION_FILES=file://internal/adapter/driven/db/migration
 ```
 
-This file configures the database connection, application settings, and Redis connection details.
-
 ### Step 2: Running the Application
 
 1. **Start the services with Docker**:
@@ -112,16 +200,17 @@ This file configures the database connection, application settings, and Redis co
    - Spin up a Redis instance for distributed rate limiting.
    - Build and run the application service.
 
-2. **Migrate Database Schema**:
-   Ensure that your PostgreSQL database is correctly initialized with the necessary tables. The migrations are located in `internal/adapter/driven/db/migration`.
+2. **Start the Application**:
+   The application should be available at
 
-3. **Start the Application**:
-   The application should be available at the configured port (e.g., `8080`).
+ the configured port (e.g., `8080`).
 
 ### Step 3: Testing the Application
 
-1. **API Testing**:
-   The project includes OpenAPI definitions (`api/openapi/user.yaml`). These can be used to generate client libraries or test the API with tools like **Postman** or **BloomRPC**.
+1. **gRPC Testing**:
+   Use a tool like **BloomRPC** to test the gRPC APIs provided in the `proto/rate/v1/rate_service.proto` file.
+   
+   Import the proto file and call methods like `CheckRateLimit`, `GetUserRateLimit`, and `UpdateUserRateLimit`.
 
 2. **Unit Tests and Benchmarks**:
    Run the tests using the following command:
@@ -132,22 +221,4 @@ This file configures the database connection, application settings, and Redis co
 
    This will execute all unit tests, including those that test the sliding window algorithm, Redis integration, and distributed consistency.
 
-### Testing with gRPC Clients
-
-To test the rate limiter using gRPC, you can use tools like **BloomRPC**. The `proto/rate/v1/rate_service.proto` defines the methods you can test.
-
-1. **Start the application**:
-   Ensure the application is running on the specified port (e.g., `8080`).
-
-2. **Use BloomRPC**:
-   - Import the `proto/rate/v1/rate_service.proto` file into **BloomRPC**.
-   - Test methods like `CheckRateLimit` by providing the `userId` and `limit`.
-
-## Test Coverage
-
-We have implemented comprehensive tests, including:
-- **Normal usage scenarios**: Testing rate limits for different users and configurations.
-- **Edge cases**: Ensuring behavior when limits are exceeded or when no prior user data exists.
-- **Distributed environment**: Ensuring that the rate limits are respected across multiple service instances using Redis.
-- **Performance benchmarks**: Stress testing the application under high traffic to ensure the rate limiter is performant and efficient.
-
+ 
