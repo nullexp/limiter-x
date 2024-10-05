@@ -55,3 +55,15 @@ docker-network-up:
 
 docker-network-down:
 	docker network rm $(APP_NETWORK_NAME)
+
+migrate-clean:
+	migrate -path=$(PG_MIGRATION_FILES) -database 'postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable' drop -f
+
+migrate-pg:
+	migrate -path=$(PG_MIGRATION_FILES) -database 'postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable' up
+
+migrate-pg-win:
+	migrate -source $(PG_MIGRATION_FILES) -database 'postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable' up
+
+migrate-pg-clean-win:
+	migrate -source $(PG_MIGRATION_FILES) -database 'postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable'  drop -f
