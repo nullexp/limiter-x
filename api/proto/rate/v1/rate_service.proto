@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package rateLimiter;
+
+
+// RateLimiter service definition
+service RateLimiterService {
+    // Check if a request is allowed based on the user's rate limit
+    rpc CheckRateLimit(CheckRateLimitRequest) returns (CheckRateLimitResponse);
+
+    // Get the current rate limit for a specific user
+    rpc GetUserRateLimit(GetUserRateLimitRequest) returns (GetUserRateLimitResponse);
+
+    // Update the rate limit for a specific user (e.g., admins can increase or decrease the limit)
+    rpc UpdateUserRateLimit(UpdateUserRateLimitRequest) returns (UpdateUserRateLimitResponse);
+}
+
+message CheckRateLimitRequest {
+    string user_id = 1;
+    int32 limit = 2;
+}
+
+message CheckRateLimitResponse {
+    bool allowed = 1;
+    string message = 2;
+}
+
+// Request message for getting a user's rate limit
+message GetUserRateLimitRequest {
+    string user_id = 1; // Unique ID of the user
+}
+
+// Response message for getting a user's rate limit
+message GetUserRateLimitResponse {
+    string user_id = 1; // Unique ID of the user
+    int32 limit = 2; // Current rate limit (e.g., 100 requests per second)
+    int32 remaining = 3; // Remaining requests allowed in the current time window
+    string window = 4; // Time window for the rate limit (e.g., "10 seconds")
+}
+
+// Request message for updating a user's rate limit
+message UpdateUserRateLimitRequest {
+    string user_id = 1; // Unique ID of the user
+    int32 new_limit = 2; // New rate limit for the user (e.g., 1000 requests per second)
+}
+
+// Response message for updating a user's rate limit
+message UpdateUserRateLimitResponse {
+    string user_id = 1; // Unique ID of the user
+    int32 updated_limit = 2; // Updated rate limit for the user
+    string message = 3; // Confirmation message (e.g., "Rate limit updated successfully")
+}
