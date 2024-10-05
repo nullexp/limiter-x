@@ -1,0 +1,216 @@
+openapi: 3.0.0
+info:
+  title: User Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /users:
+    post:
+      summary: Create a new user
+      operationId: CreateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+    get:
+      summary: Get all users
+      operationId: GetAllUsers
+      responses:
+        '200':
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAllUsersResponse'
+  /users/{id}:
+    get:
+      summary: Get user by ID
+      operationId: GetUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserByIdResponse'
+    put:
+      summary: Update user
+      operationId: UpdateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+    delete:
+      summary: Delete user
+      operationId: DeleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully
+  /users/authenticate:
+    post:
+      summary: Authenticate user by username and password
+      operationId: GetUserByUsernameAndPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetUserByUsernameAndPasswordRequest'
+      responses:
+        '200':
+          description: User authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserByUsernameAndPasswordResponse'
+  /users/paginated:
+    get:
+      summary: Get users with pagination
+      operationId: GetUsersWithPagination
+      parameters:
+        - name: offset
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUsersWithPaginationResponse'
+components:
+  schemas:
+    CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+        role_id:
+          type: string
+    CreateUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+    GetUserByIdRequest:
+      type: object
+      properties:
+        id:
+          type: string
+    GetUserByIdResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+    GetAllUsersRequest:
+      type: object
+    GetAllUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    UpdateUserRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        password:
+          type: string
+        role_id:
+          type: string
+    UpdateUserResponse:
+      type: object
+    DeleteUserRequest:
+      type: object
+      properties:
+        id:
+          type: string
+    DeleteUserResponse:
+      type: object
+    GetUserByUsernameAndPasswordRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    GetUserByUsernameAndPasswordResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+    GetUsersWithPaginationRequest:
+      type: object
+      properties:
+        offset:
+          type: integer
+        limit:
+          type: integer
+    GetUsersWithPaginationResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        role_id:
+          type: string
+        is_admin:
+          type: boolean
+        created_at:
+          type: string
+        updated_at:
+          type: string
