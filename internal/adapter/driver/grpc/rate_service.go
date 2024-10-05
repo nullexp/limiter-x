@@ -22,17 +22,17 @@ func NewRateLimiterService(rateLimiterService driverService.RateLimiter) *RateLi
 
 // CheckRateLimit implements the rate-limiting logic for the CheckRateLimit gRPC call.
 func (rls *RateLimiterService) CheckRateLimit(ctx context.Context, request *ratev1.CheckRateLimitRequest) (*ratev1.CheckRateLimitResponse, error) {
-    // Call the RateLimit method from the service
-    allowed, err := rls.service.RateLimit(ctx, request.UserId, int(request.Limit))
-    if err != nil {
-        return nil, status.Errorf(codes.Internal, "failed to check rate limit: %v", err)
-    }
+	// Call the RateLimit method from the service
+	allowed, err := rls.service.RateLimit(ctx, request.UserId, int(request.Limit))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check rate limit: %v", err)
+	}
 
-    // Return the response
-    return &ratev1.CheckRateLimitResponse{
-        Allowed: allowed,
-        Message: "Rate limit checked",
-    }, nil
+	// Return the response
+	return &ratev1.CheckRateLimitResponse{
+		Allowed: allowed,
+		Message: "Rate limit checked",
+	}, nil
 }
 
 // GetUserRateLimit implements the GetUserRateLimit gRPC call.

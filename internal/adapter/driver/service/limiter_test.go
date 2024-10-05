@@ -43,7 +43,7 @@ func TestRateLimitService_RateLimit(t *testing.T) {
 				repo.CreateRateLimit(context.Background(), model.UserRateLimit{
 					UserId:       userId, // Use userId from the test case
 					RequestCount: 0,
-					RateLimit:    100,  // This is the DB rate limit
+					RateLimit:    100, // This is the DB rate limit
 					Timestamp:    time.Now(),
 				})
 				err = transaction.Commit(context.Background())
