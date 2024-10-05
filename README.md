@@ -1,442 +1,153 @@
-# Project Structure
-
-This repository serves as a template for building Golang applications using Hexagonal Architecture. It includes Docker support for easy containerized deployment. Follow the instructions below to get started.
-
-
-
-# Table of Contents
-
-1. [Project Structure](#project-structure)
-   - [Layers and Folder Structure](#layers-and-folder-structure)
-     - [API Layer](#api-layer)
-     - [CMD Layer](#cmd-layer)
-     - [Docs Layer](#docs-layer)
-     - [Internal Layer](#internal-layer)
-       - [Adapters Layer](#adapters-layer)
-       - [Domain Layer](#domain-layer)
-       - [Ports Layer](#ports-layer)
-     - [Pkg Layer](#pkg-layer)
-     - [Script Layer](#script-layer)
-     - [Test Layer](#test-layer)
-     - [Root Files](#root-files)
-2. [Makefile](#makefile)
-   - [Variables and Environment](#variables-and-environment)
-   - [Targets](#targets)
-     - [install](#install)
-     - [buf](#buf)
-     - [buf-win](#buf-win)
-     - [run](#run)
-     - [lint](#lint)
-     - [test-run](#test-run)
-     - [docker-build](#docker-build)
-     - [docker-run](#docker-run)
-     - [docker-compose-up](#docker-compose-up)
-     - [docker-compose-down](#docker-compose-down)
-     - [create-tree](#create-tree)
-     - [fill-tree](#fill-tree)
-     - [docker-network-up](#docker-network-up)
-     - [docker-network-down](#docker-network-down)
-   - [PHONY Targets](#phony-targets)
-3. [Docker Compose File](#docker-compose-file)
-   - [Version](#version)
-   - [Services](#services)
-     - [postgres](#postgres)
-     - [app-service](#app-service)
-   - [Networks](#networks)
-   - [Volumes](#volumes)
-   - [Environment Variables](#environment-variables)
-
-
-## Layers and Folder Structure
-
-### API Layer
-The API layer contains the API definitions, including OpenAPI and Protocol Buffers (protobuf) specifications.
-
-```
-api
-|--- openapi # OpenAPI specifications
-|   |--- README.md # Documentation for OpenAPI specifications
-|   |--- user.yaml # OpenAPI definition for User service
-|--- proto # Protocol buffer definitions
-|   |--- user
-|   |   |--- v1
-|   |   |   |--- user_service.proto # gRPC service definition for User service
-|   |   |   |--- user_type.proto # gRPC message definitions for User service
-|   |--- buf.gen.yaml # buf generate configuration
-|   |--- buf.yaml # buf configuration
-|   |--- README.md # Documentation for proto files
-```
-
-### CMD Layer
-The `cmd` directory contains the entry point of the application. It includes the main application file and related documentation.
-
-```
-cmd
-|--- main.go # Main application file
-|--- README.md # Documentation for cmd directory
-```
-
-### Docs Layer
-The `docs` directory contains the project documentation, including the directory tree structure.
-
-```
-docs
-|--- README.md # Documentation for docs directory
-|--- tree.md # Directory tree structure
-```
-
-### Internal Layer
-The `internal` directory is where the core application logic resides. This includes the adapters, domain, and ports layers.
-
-#### Adapters Layer
-The adapters layer is divided into `driven` and `driver` adapters.
-
-```
-internal
-|--- adapter # Adapters layer
-|   |--- driven # Driven adapters (secondary)
-|   |   |--- db # Database related code
-|   |   |   |--- migration # Database migration files
-|   |   |   |   |--- 000001_create_users_table.down.sql # SQL for down migration
-|   |   |   |   |--- 000001_create_users_table.up.sql # SQL for up migration
-|   |   |   |   |--- init.sql # SQL script for initial setup
-|   |   |   |   |--- README.md # Documentation for migration files
-|   |   |   |--- repository # Repositories for database interactions
-|   |   |   |   |--- README.md # Documentation for repository
-|   |   |   |   |--- user.go # User repository implementation
-|   |   |   |   |--- user_mock.go # Mock implementation for user repository
-|   |   |   |--- db_handler.go # Database handler
-|   |   |   |--- postgres_transaction.go # Postgres transaction implementation
-|   |   |   |--- postgres_transaction_mock.go # Mock implementation for postgres transaction
-|   |   |--- passowrd.go # Password handling utilities
-|   |--- driver # Driver adapters (primary)
-|   |   |--- grpc # gRPC server code
-|   |   |   |--- proto
-|   |   |   |   |--- user
-|   |   |   |   |   |--- v1
-|   |   |   |   |   |   |--- user_service.pb.go # Generated gRPC code
-|   |   |   |   |   |   |--- user_service_grpc.pb.go # Generated gRPC code
-|   |   |   |   |   |   |--- user_type.pb.go # Generated gRPC code
-|   |   |   |--- README.md # Documentation for gRPC server code
-|   |   |   |--- user_service.go # gRPC service implementation
-|   |   |--- http # HTTP server code
-|   |   |   |--- README.md # Documentation for HTTP server code
-|   |   |--- model # Models used in the application
-|   |   |   |--- README.md # Documentation for models
-|   |   |--- service # Application services
-|   |   |   |--- README.md # Documentation for services
-|   |   |   |--- user_service.go # User service implementation
-|   |   |   |--- user_service_test.go # Tests for user service
-|   |   |--- README.md # Documentation for adapters layer
-```
-
-#### Domain Layer
-The domain layer contains the core business logic, including domain models and errors.
-
-```
-|--- domain # Domain layer (core business logic)
-|   |--- error # Domain errors
-|   |   |--- user.go # User-related errors
-|   |--- model # Domain models
-|   |   |--- user.go # User domain model
-|   |--- README.md # Documentation for domain layer
-```
-
-#### Ports Layer
-The ports layer defines the interfaces for the application, separating the core logic from the external components.
-
-```
-|--- port # Ports layer (interfaces)
-|   |--- driven # Interfaces for driven adapters
-|   |   |--- db # Database interfaces
-|   |   |   |--- repository # Repository interfaces
-|   |   |   |   |--- README.md # Documentation for repository interfaces
-|   |   |   |   |--- user.go # User repository interface
-|   |   |   |--- db_handler.go # Database handler interface
-|   |   |   |--- db_transaction.go # Database transaction interface
-|   |   |--- passowrd.go # Password interface
-|   |--- driver # Interfaces for driver adapters
-|   |   |--- model
-|   |   |   |--- README.md # Documentation for model interfaces
-|   |   |   |--- user.go # User model interface
-|   |   |--- service
-|   |   |   |--- README.md # Documentation for service interfaces
-|   |   |   |--- user.go # User service interface
-```
-
-### Pkg Layer
-The `pkg` directory contains package-level utilities and shared code.
-
-```
-|--- pkg # Package level utilities
-|   |--- README.md # Documentation for package level utilities
-```
-
-### Script Layer
-The `script` directory contains utility scripts for tasks like generating the directory tree.
-
-```
-|--- script # Utility scripts
-|   |--- create_tree.ps1 # Script to create directory tree
-|   |--- fill_tree.ps1 # Script to fill tree
-```
-
-### Test Layer
-The `test` directory is for test-related files and documentation.
-
-```
-|--- test # Test related files
-|   |--- README.md # Documentation for test files
-```
-
-### Root Files
-The root of the repository contains various configuration files and the main README.
-
-```
-|--- .env # Environment variables
-|--- .env.example # Example environment variables
-|--- .gitignore # Git ignore file
-|--- docker-compose.yml # Docker Compose configuration
-|--- Dockerfile # Dockerfile for building the application
-|--- go.mod # Go module file
-|--- go.sum # Go dependencies
-|--- Makefile # Makefile for task automation
-|--- README.md # Project documentation
-```
-
- Certainly! Below is an explanation of the Makefile, which you can add to your README:
-
----
-
-## Makefile
-
-The Makefile in this project automates various tasks to streamline the development and deployment process. Below is an explanation of each target in the Makefile.
-
-### Variables and Environment
-
-- **Loading Environment Variables**: If a `.env` file exists in the root directory, it will be included to load environment variables.
-```makefile
-ifneq (,$(wildcard ./.env))
-    include .env
-endif
-```
-
-### Targets
-
-- **install**: Installs necessary Go modules and tools for protobuf and gRPC.
-```makefile
-install:
-	@go mod tidy
-	@go install github.com/bufbuild/buf/cmd/buf@latest
-	@go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-```
-
-- **buf**: Generates protobuf files using Buf. This target is for Unix-like systems.
-```makefile
-buf:
-	@env PATH="$$PATH:$$(go env GOPATH)/bin" buf generate --template api/proto/buf.gen.yaml api/proto
-	@echo "✅ buf done!"
-```
-
-- **buf-win**: Generates protobuf files using Buf for Windows systems.
-```makefile
-buf-win:
-	@set PATH=%PATH%;%GOPATH%\bin
-	@buf generate --template api\proto\buf.gen.yaml api/proto
-	@echo "✅ buf done!"
-```
-
-- **run**: Runs the main Go application.
-```makefile
-run:
-	go run ./cmd
-```
-
-- **lint**: Formats the Go code and runs the linter.
-```makefile
-lint:
-	gofumpt -l -w .
-	golangci-lint run -v
-```
-
-- **test-run**: Runs the Go tests.
-```makefile
-test-run:
-	go test ./...
-```
-
-- **docker-build**: Builds a Docker image with the name specified by the `APP_NAME` environment variable.
-```makefile
-docker-build:
-	docker build -t $(APP_NAME) .
-```
-
-- **docker-run**: Runs a Docker container from the built image and maps port 8080.
-```makefile
-docker-run:
-	docker run -p 8080:8080 $(APP_NAME)
-```
-
-- **docker-compose-up**: Brings up the Docker Compose services and builds them if necessary.
-```makefile
-docker-compose-up:
-	docker-compose up --build
-```
-
-- **docker-compose-down**: Brings down the Docker Compose services and removes volumes.
-```makefile
-docker-compose-down:
-	docker-compose down --volumes
-```
-
-- **create-tree**: Creates a directory tree structure and saves it to `docs/tree.md`. This target is specific to Windows and uses PowerShell.
-```makefile
-create-tree: 
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./script/create_tree.ps1 -path "." >> .\docs\tree.md
-```
-
-- **fill-tree**: Fills the tree structure for a specified path. This target is specific to Windows and uses PowerShell.
-```makefile
-fill-tree: 
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./script/fill_tree.ps1 -path "../." 
-```
-
-- **docker-network-up**: Creates a Docker network with the name specified by the `APP_NETWORK_NAME` environment variable.
-```makefile
-docker-network-up:
-	docker network create -d bridge $(APP_NETWORK_NAME)
-```
-
-- **docker-network-down**: Removes the Docker network with the name specified by the `APP_NETWORK_NAME` environment variable.
-```makefile
-docker-network-down:
-	docker network rm $(APP_NETWORK_NAME)
-```
-
-### PHONY Targets
-The `.PHONY` declaration specifies targets that are not associated with files.
-```makefile
-.PHONY: dev-run install buf lint run test-run docker-build docker-run docker-compose-up docker-compose-down create-tree fill-tree docker-network-up docker-network-down
-```
-
-This Makefile is designed to be cross-platform, supporting both Unix-like systems and Windows. It facilitates common development tasks such as code generation, linting, testing, Docker operations, and environment setup.
-
----
-
-## Docker Compose File
-
-This Docker Compose file defines the services, networks, and volumes required for the application. It uses environment variables to provide flexibility and reusability.
-
-### Version
-
-Specifies the version of the Docker Compose file format.
-```yaml
-version: '3.8'
-```
-
-### Services
-
-#### postgres
-
-- **image**: Uses the official PostgreSQL image.
-- **container_name**: Names the container `postgres`.
-- **environment**: Sets the `POSTGRES_PASSWORD` environment variable using the `DB_PASSWORD` environment variable from the `.env` file.
-- **ports**: Maps the port specified by `DB_PORT` to `5432` on the container.
-- **networks**: Connects to the network specified by the `APP_NETWORK_NAME` environment variable.
-- **volumes**: 
-  - `postgres-user-data` volume is used to persist PostgreSQL data.
-  - Mounts the `init.sql` script to the container to initialize the database.
-
-```yaml
-  postgres:
-    image: postgres
-    container_name: postgres
-    environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT}:5432"
-    networks:
-      - ${APP_NETWORK_NAME}
-    volumes:
-      - postgres-user-data:/var/lib/postgresql/data
-      - ./internal/adapter/driven/db/migration/init.sql:/docker-entrypoint-initdb.d/init.sql  # Mount init.sql into the container
-```
-
-#### app-service
-
-- **image**: Uses the image specified by the `APP_IMAGE` environment variable.
-- **container_name**: Names the container using the `CONTAINER_NAME` environment variable.
-- **build**:
-  - **dockerfile**: Specifies the Dockerfile to use for building the image.
-  - **context**: Specifies the build context.
-- **environment**: Sets environment variables for the application using values from the `.env` file.
-- **ports**: Maps the port specified by `APP_PORT` to the same port on the container.
-- **depends_on**: Ensures the `postgres` service is started before `app-service`.
-- **restart**: Always restarts the container on failure.
-- **networks**: Connects to the network specified by the `APP_NETWORK_NAME` environment variable.
-
-```yaml
-  app-service:
-    image: ${APP_IMAGE}  # Specify the image name and tag
-    container_name: ${CONTAINER_NAME} 
-    build:
-      dockerfile: Dockerfile
-      context: .
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      PORT: ${APP_PORT}
-      IP: ${APP_IP}
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
-    depends_on:
-      - postgres
-    restart: always
-    networks:
-      - ${APP_NETWORK_NAME}
-```
-
-### Networks
-
-Defines the network `APP_NETWORK`, using the `APP_NETWORK_NAME` environment variable for flexibility. It uses the `bridge` driver and is marked as external.
-
-```yaml
-networks:
-  APP_NETWORK:
-    driver: bridge
-    external: true
-```
-
-### Volumes
-
-Defines the `postgres-user-data` volume to persist PostgreSQL data.
-
-```yaml
-volumes:
-  postgres-user-data:
-```
-
-### Environment Variables
-
-To use this Docker Compose file effectively, ensure you have the following variables defined in your `.env` file:
-
-```dotenv
-DB_PASSWORD=your_db_password
+# High-Performance Distributed Rate Limiter
+
+## Project Overview
+
+This project implements a **High-Performance Distributed Rate Limiter** for an API gateway. The solution addresses the need to **limit the number of requests per second** per user in a **distributed environment**. The rate limiter ensures global rate limits are respected across multiple service instances, preventing individual nodes from over-serving users and ensuring fairness in handling traffic.
+
+### Key Features
+- **Concurrency**: Capable of handling multiple requests from different users concurrently using Go's concurrency primitives.
+- **Distributed**: The rate limiter works across multiple instances of the service, ensuring global rate limits.
+- **Efficiency**: Memory-efficient with minimized locking overhead to handle high traffic.
+- **Customizable**: Each user can have a unique, dynamic rate limit.
+- **Precision**: Implements the **sliding window algorithm** to maintain precision and fairness.
+- **Persistence**: Redis is used as a globally distributed state to ensure rate limits are respected even after failures.
+
+### Problem Statement
+
+The goal is to build a rate-limiting service that satisfies the following requirements:
+- **Concurrency**: Multiple requests from various users handled concurrently.
+- **Distributed**: Rate limits must be respected globally across multiple instances of the service.
+- **Efficiency**: Efficient memory and CPU utilization.
+- **Customizable**: Support dynamic rate limits per user.
+- **Precision**: Implement a sliding window algorithm.
+- **Persistence**: Recover from failures while maintaining accurate request counts via Redis.
+
+## Architecture
+
+The application is split into different components to maintain separation of concerns:
+
+1. **gRPC Service Layer**: This handles incoming gRPC requests and invokes the rate-limiting logic.
+2. **Rate Limiting Logic**: Implements the core rate-limiting logic using the sliding window algorithm.
+3. **Redis Integration**: Redis is used to maintain global consistency across service instances.
+4. **Postgres Integration**: Rate limit configurations and user data are persisted in Postgres for long-term storage and recovery.
+5. **Testing**: Unit tests and benchmarks are provided to ensure that the solution performs well under load and respects rate limits globally.
+
+## gRPC Services
+
+The project uses **gRPC** to expose rate-limiting functionality across distributed services.
+
+### gRPC Files
+The `api/proto/rate/v1/rate_service.proto` defines the following service and message types:
+
+#### Service: `RateLimiterService`
+- **`CheckRateLimit`**: This API checks if a request from a given user should be allowed based on the rate limit.
+  - **Request**: `CheckRateLimitRequest`
+    - Contains the user ID and rate limit to verify if the user is allowed to make the request.
+  - **Response**: `CheckRateLimitResponse`
+    - Returns a boolean indicating whether the request is allowed or denied based on the rate limit.
+  
+- **`GetUserRateLimit`**: This API retrieves the current rate limit for a specific user.
+  - **Request**: `GetUserRateLimitRequest`
+    - Contains the user ID.
+  - **Response**: `GetUserRateLimitResponse`
+    - Returns the current rate limit for the user.
+
+- **`UpdateUserRateLimit`**: This API updates the rate limit for a specific user, allowing admins to dynamically adjust the rate limits.
+  - **Request**: `UpdateUserRateLimitRequest`
+    - Contains the user ID and the new rate limit to be applied.
+  - **Response**: `UpdateUserRateLimitResponse`
+    - Confirms the update of the user's rate limit.
+
+These gRPC methods provide the core interface for interacting with the rate limiter from external systems, ensuring that rate limits are respected across distributed instances.
+
+## Algorithms
+
+### Sliding Window Algorithm
+
+The **sliding window** algorithm ensures that rate limits are enforced precisely and fairly. The window "slides" over time, meaning that we account for recent requests and allow bursts, but not beyond the allowed rate. This ensures fairness, preventing a user from sending too many requests in a short period and gaming the system.
+
+The rate-limiting logic is handled in the `RateLimitService`:
+- Requests from the same user are counted.
+- If the number of requests exceeds the configured rate limit within the defined time window, the request is rejected.
+- The state of requests is stored in Redis to ensure persistence and global distribution across instances.
+
+### Redis for Distributed Rate Limiting
+Redis is utilized to store rate limit data for each user across distributed instances. This ensures that rate limits are respected globally even if multiple instances of the rate limiter are running.
+
+## Setup Instructions
+
+### Step 1: Environment Setup
+
+Create an `.env` file in the project root with the following variables:
+
+```bash
+DB_HOST=postgres
 DB_PORT=5432
-APP_NETWORK_NAME=your_app_network_name
-APP_IMAGE=your_app_image
-CONTAINER_NAME=your_container_name
-DB_HOST=your_db_host
-DB_USER=your_db_user
-DB_NAME=your_db_name
-APP_PORT=8081
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=rates
+APP_PORT=8080
 APP_IP=0.0.0.0
+APP_IMAGE=app-service:latest
+CONTAINER_NAME=app-container
+APP_NAME=APP_NAME
+APP_NETWORK_NAME=APP_NETWORK
+REDIS_URL=redis:6379
+WINDOW_MILI_SEC=100
+PG_MIGRATION_FILES=file://internal/adapter/driven/db/migration
 ```
 
-This setup allows you to configure your services flexibly using environment variables, making it easier to manage different environments (development, staging, production).
+This file configures the database connection, application settings, and Redis connection details.
 
----
+### Step 2: Running the Application
+
+1. **Start the services with Docker**:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+   This command will:
+   - Set up a PostgreSQL database.
+   - Spin up a Redis instance for distributed rate limiting.
+   - Build and run the application service.
+
+2. **Migrate Database Schema**:
+   Ensure that your PostgreSQL database is correctly initialized with the necessary tables. The migrations are located in `internal/adapter/driven/db/migration`.
+
+3. **Start the Application**:
+   The application should be available at the configured port (e.g., `8080`).
+
+### Step 3: Testing the Application
+
+1. **API Testing**:
+   The project includes OpenAPI definitions (`api/openapi/user.yaml`). These can be used to generate client libraries or test the API with tools like **Postman** or **BloomRPC**.
+
+2. **Unit Tests and Benchmarks**:
+   Run the tests using the following command:
+   
+   ```bash
+   go test ./internal/adapter/driver/service/ -v
+   ```
+
+   This will execute all unit tests, including those that test the sliding window algorithm, Redis integration, and distributed consistency.
+
+### Testing with gRPC Clients
+
+To test the rate limiter using gRPC, you can use tools like **BloomRPC**. The `proto/rate/v1/rate_service.proto` defines the methods you can test.
+
+1. **Start the application**:
+   Ensure the application is running on the specified port (e.g., `8080`).
+
+2. **Use BloomRPC**:
+   - Import the `proto/rate/v1/rate_service.proto` file into **BloomRPC**.
+   - Test methods like `CheckRateLimit` by providing the `userId` and `limit`.
+
+## Test Coverage
+
+We have implemented comprehensive tests, including:
+- **Normal usage scenarios**: Testing rate limits for different users and configurations.
+- **Edge cases**: Ensuring behavior when limits are exceeded or when no prior user data exists.
+- **Distributed environment**: Ensuring that the rate limits are respected across multiple service instances using Redis.
+- **Performance benchmarks**: Stress testing the application under high traffic to ensure the rate limiter is performant and efficient.
+
