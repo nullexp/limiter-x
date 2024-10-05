@@ -6,8 +6,10 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
+	"time"
 
-	adapterDriven "github.com/nullexp/limiter-x/internal/adapter/driven"
+	"github.com/nullexp/limiter-x/internal/adapter/driven/cache"
 	drivenDb "github.com/nullexp/limiter-x/internal/adapter/driven/db"
 	repository "github.com/nullexp/limiter-x/internal/adapter/driven/db/repository"
 
@@ -18,7 +20,7 @@ import (
 	_ "github.com/lib/pq"
 
 	grpcDriver "github.com/nullexp/limiter-x/internal/adapter/driver/grpc"
-	userv1 "github.com/nullexp/limiter-x/internal/adapter/driver/grpc/proto/user/v1"
+	ratev1 "github.com/nullexp/limiter-x/internal/adapter/driver/grpc/proto/rate/v1"
 	driver "github.com/nullexp/limiter-x/internal/adapter/driver/service"
 
 	"google.golang.org/grpc"
@@ -66,8 +68,8 @@ func main() {
 		log.Fatalf("failed to ping database: %v", err)
 	}
 
-	port := os.Getenv("PORT")
-	ip := os.Getenv("IP")
+	port := os.Getenv("APP_PORT")
+	ip := os.Getenv("APP_IP")
 
 	addr := fmt.Sprintf("%s:%v", ip, port)
 	// Create a TCP listener
@@ -85,12 +87,17 @@ func main() {
 	// Register the Greeter service
 
 	txFactory := drivenDb.NewPostgresDbTransactionFactory(db)
-	userRepoFactory := repository.NewUserRepositoryFactory()
+	rateRepoFactory := repository.NewUserRateLimitRepositoryFactory()
+	cache := cache.NewRedisClient("", "", "redis", os.Getenv("REDIS_URL"))
+	cache.Connect()
 
-	passwordService := adapterDriven.NewBcryptPasswordService(10)
-	userService := driver.NewUserService(userRepoFactory, passwordService, txFactory)
-	grpcService := grpcDriver.NewUserService(userService)
-	userv1.RegisterUserServiceServer(s, grpcService)
+	windowMilSecond, err := strconv.Atoi(os.Getenv("WINDOW_MILI_SEC"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rateService := driver.NewRateLimitService(rateRepoFactory, cache, txFactory, time.Duration(windowMilSecond)*time.Millisecond)
+	grpcService := grpcDriver.NewRateLimiterService(rateService)
+	ratev1.RegisterRateLimiterServiceServer(s, grpcService)
 
 	// Register reflection service on gRPC server.
 	reflection.Register(s)
