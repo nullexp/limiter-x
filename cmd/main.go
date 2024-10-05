@@ -13,7 +13,6 @@ import (
 	drivenDb "github.com/nullexp/limiter-x/internal/adapter/driven/db"
 	repository "github.com/nullexp/limiter-x/internal/adapter/driven/db/repository"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
@@ -33,20 +32,6 @@ func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
-	}
-
-	m, err := migrate.New("file://internal/adapter/driven/db/migration",
-		fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-			os.Getenv("DB_USER"),
-			os.Getenv("DB_PASSWORD"),
-			os.Getenv("DB_HOST"),
-			os.Getenv("DB_PORT"),
-			os.Getenv("DB_NAME")))
-	if err != nil {
-		log.Fatal("Error loading migration files ", err)
-	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatal("Error calling up function ", err)
 	}
 
 	dsn := "host=" + os.Getenv("DB_HOST") +
